@@ -3,7 +3,7 @@ services:
     name: fpl-analyst
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1
+    startCommand: python startup.py && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
     plan: free
     envVars:
       - key: PYTHON_VERSION
