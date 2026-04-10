@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPL Analyst</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --border: #2d3548;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #00ff87;
+    --accent2: #04f5ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .landing {
+    text-align: center;
+    max-width: 480px;
+    padding: 40px;
+  }
+
+  h1 {
+    font-size: 42px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 16px;
+    margin-bottom: 40px;
+  }
+
+  .input-group {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  input {
+    flex: 1;
+    padding: 14px 18px;
+    font-size: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-muted); }
+
+  button {
+    padding: 14px 28px;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #000;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: #00cc6a; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .help {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: left;
+  }
+
+  .help h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .help ol {
+    padding-left: 20px;
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  .help a { color: var(--accent); text-decoration: none; }
+  .help a:hover { text-decoration: underline; }
+
+  .error {
+    color: #ff4655;
+    font-size: 13px;
+    margin-top: -16px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: left;
+  }
+
+  .feature .icon { font-size: 20px; margin-bottom: 6px; }
+  .feature .fname { font-size: 13px; font-weight: 600; }
+  .feature .fdesc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="landing">
+  <h1>FPL Analyst</h1>
+  <p class="subtitle">AI-powered Fantasy Premier League analysis</p>
+
+  <div class="features">
+    <div class="feature">
+      <div class="icon">&#9917;</div>
+      <div class="fname">Predicted Points</div>
+      <div class="fdesc">ML model predicts next-GW xPts per player</div>
+    </div>
+    <div class="feature">
+      <div class="icon">&#128203;</div>
+      <div class="fname">Optimal Lineup</div>
+      <div class="fdesc">Best starting XI and captain pick</div>
+    </div>
+    <div class="feature">
+      <div class="icon">&#128260;</div>
+      <div class="fname">Transfer Advice</div>
+      <div class="fdesc">Who to sell, who to buy, hit analysis</div>
+    </div>
+    <div class="feature">
+      <div class="icon">&#127919;</div>
+      <div class="fname">Chip Strategy</div>
+      <div class="fdesc">When to play BB, TC, FH, WC</div>
+    </div>
+  </div>
+
+  <form onsubmit="go(event)">
+    <div class="input-group">
+      <input type="text" id="team-id" placeholder="Enter your FPL Team ID" inputmode="numeric" pattern="[0-9]*">
+      <button type="submit" id="go-btn">Analyse</button>
+    </div>
+  </form>
+  <div class="error" id="error-msg"></div>
+
+  <div class="help">
+    <h3>How to find your Team ID</h3>
+    <ol>
+      <li>Go to <a href="https://fantasy.premierleague.com" target="_blank">fantasy.premierleague.com</a></li>
+      <li>Log in and click <strong>My Team</strong></li>
+      <li>Look at the URL - it will be:<br>
+        <code style="color:var(--accent);font-size:12px;">fantasy.premierleague.com/entry/<strong>1234567</strong>/event/32</code></li>
+      <li>The number after <strong>/entry/</strong> is your Team ID</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+function go(e) {
+  e.preventDefault();
+  const input = document.getElementById('team-id');
+  const id = input.value.trim();
+  const err = document.getElementById('error-msg');
+
+  if (!id || !/^\d+$/.test(id)) {
+    err.textContent = 'Please enter a valid numeric Team ID';
+    err.style.display = 'block';
+    return;
+  }
+
+  err.style.display = 'none';
+  const btn = document.getElementById('go-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  window.location.href = '/team/' + id;
+}
+</script>
+
+</body>
+</html>

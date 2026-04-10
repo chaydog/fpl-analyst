@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPL Analyst - {{ data.team_name }}</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #2d3548;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #00ff87;
+    --accent2: #04f5ff;
+    --purple: #963cff;
+    --red: #ff4655;
+    --yellow: #ffd000;
+    --green: #00ff87;
+    --pitch-dark: #1a5e2a;
+    --pitch-light: #1f6e32;
+    --pitch-line: rgba(255,255,255,0.25);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+  }
+
+  .header-stat {
+    text-align: right;
+  }
+
+  .header-stat .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .header-stat .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Grid layout */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .grid-full {
+    grid-column: 1 / -1;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .card-header .badge {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .badge-green { background: rgba(0,255,135,0.15); color: var(--green); }
+  .badge-yellow { background: rgba(255,208,0,0.15); color: var(--yellow); }
+  .badge-red { background: rgba(255,70,85,0.15); color: var(--red); }
+  .badge-purple { background: rgba(150,60,255,0.15); color: var(--purple); }
+
+  /* Pitch */
+  .pitch-wrapper {
+    padding: 20px;
+  }
+
+  .pitch {
+    background: var(--pitch-dark);
+    border-radius: 8px;
+    padding: 30px 20px 20px;
+    position: relative;
+    overflow: hidden;
+    min-height: 420px;
+  }
+
+  .pitch::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--pitch-dark) 0px,
+      var(--pitch-dark) 60px,
+      var(--pitch-light) 60px,
+      var(--pitch-light) 120px
+    );
+    border-radius: 8px;
+  }
+
+  /* Pitch markings */
+  .pitch::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 120px;
+    border: 2px solid var(--pitch-line);
+    border-radius: 50%;
+  }
+
+  .pitch-line-center {
+    position: absolute;
+    top: 50%;
+    left: 5%;
+    right: 5%;
+    height: 2px;
+    background: var(--pitch-line);
+  }
+
+  .pitch-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+    z-index: 2;
+    margin-bottom: 16px;
+  }
+
+  .pitch-row:last-child { margin-bottom: 0; }
+
+  .player-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90px;
+  }
+
+  .player-shirt {
+    width: 58px;
+    height: 66px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 2px;
+  }
+
+  .player-shirt img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+
+  .captain-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--yellow);
+    color: #000;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .player-name {
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: #fff;
+    background: rgba(0,0,0,0.7);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .player-xpts {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  /* Bench */
+  .bench {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+  }
+
+  .bench-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+  }
+
+  .bench .player-card { opacity: 0.7; }
+
+  /* Transfer cards */
+  .transfer-option {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .transfer-option:last-child { border-bottom: none; }
+
+  .transfer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .transfer-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .transfer-swaps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .transfer-swap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface2);
+    padding: 10px 14px;
+    border-radius: 8px;
+  }
+
+  .transfer-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .transfer-player .pos-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .pos-badge.gkp { background: #e8b100; color: #000; }
+  .pos-badge.def { background: #2563eb; color: #fff; }
+  .pos-badge.mid { background: #16a34a; color: #fff; }
+  .pos-badge.fwd { background: #dc2626; color: #fff; }
+
+  .transfer-player .name { font-weight: 600; font-size: 14px; }
+  .transfer-player .meta { color: var(--text-muted); font-size: 12px; }
+
+  .transfer-arrow {
+    font-size: 20px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .transfer-out .name { color: var(--red); }
+  .transfer-in .name { color: var(--green); }
+
+  .transfer-reason {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    background: rgba(0,255,135,0.05);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    margin-top: 4px;
+  }
+
+  .transfer-verdict {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .verdict-good { background: rgba(0,255,135,0.1); color: var(--green); }
+  .verdict-bad { background: rgba(255,70,85,0.1); color: var(--red); }
+
+  /* Chip strategy */
+  .chips-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .chip-card {
+    padding: 14px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .chip-card.used {
+    opacity: 0.4;
+  }
+
+  .chip-card .chip-icon {
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+
+  .chip-card .chip-name {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+
+  .chip-card .chip-status {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .chip-card .chip-status.available { color: var(--green); }
+  .chip-card .chip-status.used-status { color: var(--red); }
+
+  .chip-recommendation {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .chip-rec-item {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: var(--surface2);
+  }
+
+  .chip-rec-item h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .chip-rec-item .reasoning {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .chip-this-week {
+    padding: 16px 20px;
+    background: rgba(0,255,135,0.05);
+    border-top: 2px solid var(--accent);
+  }
+
+  .chip-this-week.no-chip {
+    background: var(--surface2);
+    border-top-color: var(--border);
+  }
+
+  .chip-this-week h3 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .chip-this-week p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Top players table */
+  .top-players { padding: 0; }
+
+  .pos-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pos-tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .pos-tab:hover { color: var(--text); background: var(--surface2); }
+  .pos-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .players-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .players-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .players-table th:nth-child(n+3) { text-align: right; }
+
+  .players-table td {
+    padding: 10px 14px;
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+
+  .players-table td:nth-child(n+3) { text-align: right; }
+
+  .players-table tr:hover { background: var(--surface2); }
+
+  .players-table .xpts { color: var(--accent); font-weight: 700; }
+  .players-table .penalty-flag { color: var(--yellow); font-size: 10px; }
+
+  /* DGW/BGW schedule */
+  .schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .schedule-item:last-child { border-bottom: none; }
+
+  .gw-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .gw-badge.double { background: rgba(150,60,255,0.2); color: var(--purple); }
+  .gw-badge.blank { background: rgba(255,70,85,0.2); color: var(--red); }
+  .gw-badge.double-blank { background: rgba(255,208,0,0.2); color: var(--yellow); }
+
+  .schedule-detail {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* GW info bar */
+  .gw-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    background: rgba(0,255,135,0.05);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Interactive transfer mode */
+  .player-card.clickable { cursor: pointer; }
+  .player-card.clickable:hover .player-shirt { border-color: var(--red); box-shadow: 0 0 12px rgba(255,70,85,0.4); }
+  .player-card.selected-out .player-shirt { border-color: var(--red) !important; box-shadow: 0 0 16px rgba(255,70,85,0.6); opacity: 0.5; }
+  .player-card.selected-out .player-name { background: var(--red); color: #fff; }
+
+  .transfer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    gap: 12px;
+    min-height: 52px;
+  }
+
+  .transfer-bar .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .transfer-bar .selected-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--red);
+  }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-accent { background: var(--accent); color: #000; }
+  .btn-accent:hover:not(:disabled) { background: #00cc6a; }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); }
+
+  /* Replacement panel */
+  .replacement-panel {
+    border-top: 2px solid var(--accent);
+    background: var(--surface2);
+  }
+
+  .replacement-panel .panel-header {
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .replacement-panel .panel-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .replacement-slot {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .replacement-slot:last-child { border-bottom: none; }
+
+  .replacement-slot h4 {
+    font-size: 12px;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+
+  .replacement-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .replacement-option:hover { background: rgba(0,255,135,0.08); }
+  .replacement-option.selected { background: rgba(0,255,135,0.15); border: 1px solid var(--accent); }
+
+  .replacement-option .opt-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .replacement-option .opt-name { font-weight: 600; font-size: 13px; }
+  .replacement-option .opt-meta { font-size: 11px; color: var(--text-muted); }
+  .replacement-option .opt-xpts { font-weight: 700; color: var(--accent); font-size: 14px; }
+
+  .sim-summary {
+    padding: 14px 20px;
+    background: rgba(0,255,135,0.05);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sim-summary .sim-stat { text-align: center; }
+  .sim-summary .sim-stat .label { font-size: 10px; text-transform: uppercase; color: var(--text-muted); }
+  .sim-summary .sim-stat .value { font-size: 16px; font-weight: 700; }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Confirmed transfer summary */
+  .confirmed-panel {
+    border-top: 3px solid var(--accent);
+    background: linear-gradient(180deg, rgba(0,255,135,0.06), var(--surface));
+  }
+
+  .confirmed-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .confirmed-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .confirmed-transfer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .confirmed-transfer:last-of-type { border-bottom: none; }
+
+  .confirmed-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .confirmed-player img {
+    width: 40px;
+    height: 46px;
+    object-fit: contain;
+  }
+
+  .confirmed-player .cp-name { font-weight: 700; font-size: 15px; }
+  .confirmed-player .cp-meta { font-size: 12px; color: var(--text-muted); }
+
+  .confirmed-player.out .cp-name { color: var(--red); }
+  .confirmed-player.in .cp-name { color: var(--green); }
+
+  .confirmed-arrow {
+    font-size: 24px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .confirmed-footer {
+    padding: 16px 20px;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .confirmed-footer .cf-stats {
+    display: flex;
+    gap: 24px;
+  }
+
+  .confirmed-footer .cf-stat .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .confirmed-footer .cf-stat .value {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .btn-confirm {
+    background: var(--accent);
+    color: #000;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-confirm:hover { background: #00cc6a; }
+
+  .btn-edit {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-edit:hover { color: var(--text); border-color: var(--text-muted); }
+
+  /* Horizon toggle */
+  .horizon-toggle {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .horizon-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .horizon-btn:hover { color: var(--text); }
+  .horizon-btn.active { background: var(--accent); color: #000; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>{{ data.team_name }}</h1>
+      <div style="color: var(--text-muted); font-size: 13px; margin-top: 2px;">FPL Model - Gameweek {{ data.next_gw }}</div>
+    </div>
+    <div class="header-stats">
+      <div class="header-stat">
+        <div class="label">Rank</div>
+        <div class="value">{{ "{:,}".format(data.overall_rank) }}</div>
+      </div>
+      <div class="header-stat">
+        <div class="label">Points</div>
+        <div class="value">{{ data.total_points }}</div>
+      </div>
+      <div class="header-stat">
+        <div class="label">Bank</div>
+        <div class="value">{{ data.bank }}m</div>
+      </div>
+      <div class="header-stat">
+        <div class="label">Free Transfers</div>
+        <div class="value">{{ data.free_transfers }}</div>
+      </div>
+      <div class="header-stat">
+        <div class="label">Optimise For</div>
+        <div class="horizon-toggle">
+          <button class="horizon-btn" onclick="setHorizon(1, this)">This GW</button>
+          <button class="horizon-btn active" onclick="setHorizon(5, this)">5 GWs</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- PITCH VIEW -->
+    <div class="card" id="pitch-card">
+      <div class="card-header">
+        <h2 id="pitch-title">Recommended Starting XI</h2>
+        <span class="badge badge-green">GW{{ data.next_gw }}</span>
+      </div>
+      <div id="pitch-container"></div>
+
+      <!-- Transfer bar -->
+      <div class="transfer-bar" id="transfer-bar">
+        <div>
+          <span class="hint" id="transfer-hint">Click a player to transfer them out</span>
+          <span class="selected-count" id="selected-count" style="display:none;"></span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-ghost" id="btn-reset" style="display:none;" onclick="resetTransfer()">Reset</button>
+          <button class="btn btn-accent" id="btn-find" style="display:none;" onclick="findReplacements()">Find replacements</button>
+        </div>
+      </div>
+
+      <!-- Replacement panel (hidden by default) -->
+      <div class="replacement-panel" id="replacement-panel" style="display:none;"></div>
+    </div>
+
+    <!-- TRANSFERS -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Transfer Recommendations</h2>
+        <span class="badge badge-purple">{{ data.free_transfers }} FT</span>
+      </div>
+      <div id="transfer-recs-container"></div>
+    </div>
+
+    <!-- CHIP STRATEGY -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Chip Strategy</h2>
+        <span class="badge badge-yellow">GW{{ data.next_gw }}</span>
+      </div>
+
+      <div class="chips-grid">
+        {% for key, chip in data.chips_available.items() %}
+        <div class="chip-card {{ 'used' if not chip.available else '' }}">
+          <div class="chip-icon">
+            {% if key == 'wildcard' %}&#9889;{% elif key == '3xc' %}&#128081;{% elif key == 'bboost' %}&#128640;{% elif key == 'freehit' %}&#127919;{% endif %}
+          </div>
+          <div class="chip-name">{{ chip.name }}</div>
+          {% if chip.available %}
+          <div class="chip-status available">Available</div>
+          {% else %}
+          <div class="chip-status used-status">Used GW{{ chip.used_gw }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- This week recommendation -->
+      {% set has_chips = data.chip_recommendations|length > 0 %}
+      <div class="chip-this-week {{ 'no-chip' if not data.chip_this_week.play_chip else '' }}">
+        {% if not has_chips %}
+        <h3>All chips used</h3>
+        <p>No chips remaining this season</p>
+        {% elif data.chip_this_week.play_chip %}
+        <h3 style="color: var(--accent);">Play {{ data.chip_this_week.play_chip }} this week</h3>
+        <p>{{ data.chip_this_week.reasoning }}</p>
+        {% else %}
+        <h3>Hold chips this week</h3>
+        <p>{{ data.chip_this_week.reasoning }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Per-chip recommendations -->
+      {% if data.chip_recommendations %}
+      <div class="chip-recommendation">
+        {% for key, rec in data.chip_recommendations.items() %}
+        <div class="chip-rec-item">
+          <h4>
+            {% if key == 'bench_boost' %}Bench Boost{% elif key == 'triple_captain' %}Triple Captain{% elif key == 'free_hit' %}Free Hit{% elif key == 'wildcard' %}Wildcard{% endif %}
+            {% if rec.best_gw %} - Best: GW{{ rec.best_gw }}{% endif %}
+          </h4>
+          <div class="reasoning">
+            {% for r in rec.reasoning %}
+              {{ r }}{% if not loop.last %} | {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- DGW/BGW Schedule -->
+      {% if data.gw_schedule %}
+      <div style="padding: 12px 20px 4px; border-top: 1px solid var(--border);">
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
+          Upcoming Double/Blank Gameweeks
+        </div>
+      </div>
+      {% for gw in data.gw_schedule %}
+      <div class="schedule-item">
+        <span class="gw-badge {{ gw.type.replace('+', '-') }}">GW{{ gw.gw }}</span>
+        <span class="schedule-detail">
+          {% if gw.type == 'double' %}{{ gw.double_teams }} teams with double fixtures
+          {% elif gw.type == 'blank' %}{{ gw.blank_teams }} teams without fixtures
+          {% else %}{{ gw.double_teams }} doubles, {{ gw.blank_teams }} blanks{% endif %}
+        </span>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- TOP PLAYERS -->
+    <div class="card top-players">
+      <div class="card-header">
+        <h2>Top Players by Position</h2>
+        <span class="badge badge-green">xPts</span>
+      </div>
+
+      <div class="pos-tabs">
+        <button class="pos-tab active" onclick="showPosition('MID', this)">MID</button>
+        <button class="pos-tab" onclick="showPosition('FWD', this)">FWD</button>
+        <button class="pos-tab" onclick="showPosition('DEF', this)">DEF</button>
+        <button class="pos-tab" onclick="showPosition('GKP', this)">GKP</button>
+      </div>
+
+      <div id="top-players-container"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ORIGINAL_DATA = {{ data_json|safe }};
+const TEAM_ID = {{ team_id }};
+
+// Working state - updated after each confirmed transfer
+let currentStarters = [...ORIGINAL_DATA.starters];
+let currentBench = [...ORIGINAL_DATA.bench];
+let currentBank = ORIGINAL_DATA.bank;
+let freeTransfersLeft = ORIGINAL_DATA.free_transfers;
+let totalTransfersMade = 0;
+let confirmedTransfers = []; // [{out: {...}, in: {...}}, ...]
+
+let selectedOut = new Set();
+let simResult = null;
+let confirmed = false;
+let horizon = 5; // default: optimise for 5 GWs
+
+function getXpts(player) {
+  return horizon === 1 ? player.xpts : player.xpts_5gw;
+}
+
+function getXptsLabel() {
+  return horizon === 1 ? 'xPts' : 'xPts (5GW)';
+}
+
+function setHorizon(n, btn) {
+  horizon = n;
+  document.querySelectorAll('.horizon-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (!simResult) {
+    renderPitch(currentStarters, currentBench, false);
+  }
+  renderTopPlayers();
+  renderTransferRecs();
+}
+
+function renderTransferRecs() {
+  const container = document.getElementById('transfer-recs-container');
+  const recs = horizon === 1 ? ORIGINAL_DATA.transfers_1gw : ORIGINAL_DATA.transfers_5gw;
+  const label = horizon === 1 ? 'xPts' : 'xPts (5GW)';
+
+  if (!recs || recs.length === 0) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">No beneficial transfers found.</div>';
+    return;
+  }
+
+  let html = '';
+  recs.forEach((rec, idx) => {
+    html += '<div class="transfer-option">';
+    html += '<div class="transfer-header">';
+    html += `<h3>Option ${idx + 1}: ${rec.n_transfers} transfer${rec.n_transfers > 1 ? 's' : ''}</h3>`;
+
+    if (rec.hits > 0) {
+      if (rec.worth_it) {
+        html += `<span class="transfer-verdict verdict-good">Worth the hit: +${rec.points_gain.toFixed(1)} net ${label}</span>`;
+      } else {
+        html += `<span class="transfer-verdict verdict-bad">Not worth the hit</span>`;
+      }
+    } else {
+      html += `<span class="transfer-verdict verdict-good">FREE +${rec.raw_gain} ${label}</span>`;
+    }
+    html += '</div>';
+
+    html += '<div class="transfer-swaps">';
+    rec.out.forEach((out, i) => {
+      const inp = rec['in'][i];
+      html += `<div>
+        <div class="transfer-swap">
+          <div class="transfer-player transfer-out">
+            <span class="pos-badge ${out.position.toLowerCase()}">${out.position}</span>
+            <div>
+              <div class="name">${out.name}</div>
+              <div class="meta">${out.team} - ${out.cost}m - ${out.xpts} ${label}</div>
+            </div>
+          </div>
+          <div class="transfer-arrow">&rarr;</div>
+          <div class="transfer-player transfer-in">
+            <span class="pos-badge ${inp.position.toLowerCase()}">${inp.position}</span>
+            <div>
+              <div class="name">${inp.name}</div>
+              <div class="meta">${inp.team} - ${inp.cost}m - ${inp.xpts} ${label}</div>
+            </div>
+          </div>
+        </div>`;
+      if (rec.reasons && rec.reasons[i]) {
+        html += `<div class="transfer-reason">${rec.reasons[i]}</div>`;
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+
+    if (rec.hits > 0) {
+      html += `<div style="font-size:12px;color:var(--text-muted);">Raw uplift: +${rec.raw_gain} ${label} | Hit: -${rec.hit_cost} | Net: +${rec.points_gain.toFixed(1)} | Bank after: ${rec.bank_after}m</div>`;
+    } else {
+      html += `<div style="font-size:12px;color:var(--text-muted);">Bank after: ${rec.bank_after}m</div>`;
+    }
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function showPosition(pos, btn) {
+  activePos = pos;
+  document.querySelectorAll('.position-table').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.pos-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('table-' + pos).style.display = 'block';
+  btn.classList.add('active');
+}
+
+function renderPitch(starters, bench, isSimulated) {
+  const rows = { GKP: [], DEF: [], MID: [], FWD: [] };
+  starters.forEach(p => { if (rows[p.position]) rows[p.position].push(p); });
+
+  const pitchTitle = document.getElementById('pitch-title');
+  const titlePrefix = confirmedTransfers.length > 0 ? 'Updated' : 'Recommended';
+  pitchTitle.textContent = isSimulated ? 'Simulated Starting XI' : `${titlePrefix} Starting XI`;
+
+  let html = '<div class="pitch-wrapper"><div class="pitch"><div class="pitch-line-center"></div>';
+
+  ['GKP', 'DEF', 'MID', 'FWD'].forEach(pos => {
+    html += '<div class="pitch-row">';
+    rows[pos].forEach(p => {
+      const isSelected = selectedOut.has(p.id);
+      const canClick = !isSimulated && !confirmed;
+      const clickable = canClick ? 'clickable' : '';
+      const selectedCls = isSelected && !confirmed ? 'selected-out' : '';
+      const onclick = canClick ? `onclick="togglePlayer(${p.id})"` : '';
+
+      html += `<div class="player-card ${clickable} ${selectedCls}" ${onclick} data-id="${p.id}">
+        <div class="player-shirt">
+          <img src="${p.kit_url}" alt="${p.team}">
+          ${p.role ? `<div class="captain-badge">${p.role}</div>` : ''}
+        </div>
+        <div class="player-name">${p.name}</div>
+        <div class="player-xpts">${getXpts(p)} ${getXptsLabel()}</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+
+  html += '<div class="bench"><span class="bench-label">Bench</span>';
+  bench.forEach(p => {
+    const canClick = !isSimulated && !confirmed;
+    const clickable = canClick ? 'clickable' : '';
+    const selectedCls = selectedOut.has(p.id) && !confirmed ? 'selected-out' : '';
+    const onclick = canClick ? `onclick="togglePlayer(${p.id})"` : '';
+
+    html += `<div class="player-card ${clickable} ${selectedCls}" ${onclick} data-id="${p.id}">
+      <div class="player-shirt" style="width:44px;height:50px;">
+        <img src="${p.kit_url}" alt="${p.team}">
+      </div>
+      <div class="player-name" style="font-size:10px;">${p.name}</div>
+      <div class="player-xpts">${getXpts(p)}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  document.getElementById('pitch-container').innerHTML = html;
+}
+
+function togglePlayer(id) {
+  if (simResult || confirmed) return;
+  if (selectedOut.has(id)) {
+    selectedOut.delete(id);
+  } else {
+    selectedOut.add(id);
+  }
+  renderPitch(currentStarters, currentBench, false);
+  updateTransferBar();
+}
+
+function getHitInfo() {
+  const pending = selectedOut.size;
+  const totalAfter = totalTransfersMade + pending;
+  const hits = Math.max(0, totalAfter - ORIGINAL_DATA.free_transfers);
+  return { hits, hitCost: hits * 4, totalAfter };
+}
+
+function updateTransferBar() {
+  const count = selectedOut.size;
+  const hint = document.getElementById('transfer-hint');
+  const countEl = document.getElementById('selected-count');
+  const btnReset = document.getElementById('btn-reset');
+  const btnFind = document.getElementById('btn-find');
+
+  // Show confirmed transfers count
+  let prefix = '';
+  if (confirmedTransfers.length > 0) {
+    prefix = `<span style="color:var(--accent);">${confirmedTransfers.length} confirmed</span> | `;
+  }
+
+  if (confirmed) {
+    hint.style.display = 'none';
+    countEl.style.display = '';
+    countEl.innerHTML = prefix + 'Click another player to make another transfer';
+    btnReset.style.display = '';
+    btnReset.textContent = 'Start over';
+    btnFind.style.display = 'none';
+    return;
+  }
+
+  if (count === 0 && confirmedTransfers.length === 0) {
+    hint.textContent = 'Click a player to transfer them out';
+    hint.style.display = '';
+    countEl.style.display = 'none';
+    btnReset.style.display = 'none';
+    btnFind.style.display = 'none';
+  } else if (count === 0 && confirmedTransfers.length > 0) {
+    hint.style.display = 'none';
+    countEl.style.display = '';
+    countEl.innerHTML = prefix + 'Click another player or start over';
+    btnReset.style.display = '';
+    btnReset.textContent = 'Start over';
+    btnFind.style.display = 'none';
+  } else if (simResult) {
+    hint.style.display = 'none';
+    countEl.style.display = '';
+    const { hits, hitCost } = getHitInfo();
+    let hitText = hits > 0 ? ` (total ${hits} hit${hits>1?'s':''} = -${hitCost} pts)` : ' (free)';
+    countEl.innerHTML = prefix + `Selecting replacement${hitText}`;
+    btnReset.style.display = '';
+    btnReset.textContent = confirmedTransfers.length > 0 ? 'Cancel this' : 'Reset';
+    btnFind.style.display = 'none';
+  } else {
+    const names = [];
+    [...currentStarters, ...currentBench].forEach(p => {
+      if (selectedOut.has(p.id)) names.push(p.name);
+    });
+    hint.style.display = 'none';
+    countEl.style.display = '';
+    countEl.innerHTML = prefix + `Transferring out: ${names.join(', ')}`;
+    btnReset.style.display = '';
+    btnReset.textContent = confirmedTransfers.length > 0 ? 'Cancel this' : 'Reset';
+    btnFind.style.display = '';
+  }
+}
+
+function resetTransfer() {
+  if (confirmedTransfers.length > 0 && (simResult || selectedOut.size > 0)) {
+    // Cancel just the current in-progress transfer, keep confirmed ones
+    selectedOut.clear();
+    simResult = null;
+    confirmed = false;
+    document.getElementById('replacement-panel').style.display = 'none';
+    renderPitch(currentStarters, currentBench, false);
+    updateTransferBar();
+  } else {
+    // Full reset - undo everything
+    selectedOut.clear();
+    simResult = null;
+    confirmed = false;
+    confirmedTransfers = [];
+    totalTransfersMade = 0;
+    currentStarters = [...ORIGINAL_DATA.starters];
+    currentBench = [...ORIGINAL_DATA.bench];
+    currentBank = ORIGINAL_DATA.bank;
+    freeTransfersLeft = ORIGINAL_DATA.free_transfers;
+    document.getElementById('replacement-panel').style.display = 'none';
+    renderPitch(currentStarters, currentBench, false);
+    updateTransferBar();
+  }
+}
+
+async function findReplacements() {
+  const btnFind = document.getElementById('btn-find');
+  btnFind.disabled = true;
+  btnFind.innerHTML = '<span class="loading-spinner"></span>Finding...';
+
+  const panel = document.getElementById('replacement-panel');
+
+  try {
+    const resp = await fetch('/api/simulate-transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_id: TEAM_ID, sell_ids: [...selectedOut], horizon: horizon }),
+    });
+
+    simResult = await resp.json();
+
+    if (simResult.error) {
+      panel.innerHTML = `<div style="padding:20px;color:var(--red);">${simResult.error}</div>`;
+      panel.style.display = 'block';
+      return;
+    }
+
+    renderReplacementPanel(simResult);
+    panel.style.display = 'block';
+
+    if (simResult.starters && simResult.starters.length) {
+      renderPitch(simResult.starters, simResult.bench, true);
+    }
+
+    updateTransferBar();
+
+  } catch (err) {
+    panel.innerHTML = `<div style="padding:20px;color:var(--red);">Error: ${err.message}</div>`;
+    panel.style.display = 'block';
+  } finally {
+    btnFind.disabled = false;
+    btnFind.textContent = 'Find replacements';
+  }
+}
+
+function renderReplacementPanel(result) {
+  const panel = document.getElementById('replacement-panel');
+  let html = '';
+
+  html += `<div class="panel-header">
+    <h3>Select Replacements</h3>
+    <span style="font-size:12px;color:var(--text-muted);">Click a player to select them, then confirm</span>
+  </div>`;
+
+  result.replacements.forEach((slot, slotIdx) => {
+    const sell = slot.selling;
+    html += `<div class="replacement-slot">
+      <h4>Replacing ${sell.name} (${sell.position} - ${sell.team} - ${sell.cost}m - ${sell.xpts} xPts)</h4>`;
+
+    slot.options.forEach((opt, optIdx) => {
+      const isSelected = slot.selected && slot.selected.id === opt.id;
+      html += `<div class="replacement-option ${isSelected ? 'selected' : ''}"
+                    onclick="selectReplacement(${slotIdx}, ${optIdx})">
+        <div class="opt-info">
+          <span class="pos-badge ${opt.position.toLowerCase()}">${opt.position}</span>
+          <div>
+            <div class="opt-name">${opt.name} ${opt.penalty ? '<span class="penalty-flag">PEN</span>' : ''}</div>
+            <div class="opt-meta">${opt.team} - ${opt.cost}m - Form: ${opt.form} - xGI/90: ${opt.xgi90}</div>
+          </div>
+        </div>
+        <div class="opt-xpts">${opt.xpts} xPts</div>
+      </div>`;
+    });
+
+    html += '</div>';
+  });
+
+  // Summary + confirm button (use cumulative hit count)
+  const { hits, hitCost } = getHitInfo();
+  const allSelected = result.replacements.every(r => r.selected);
+
+  html += `<div class="sim-summary">
+    <div class="cf-stats" style="display:flex;gap:24px;">
+      <div class="cf-stat">
+        <div class="label" style="font-size:10px;text-transform:uppercase;color:var(--text-muted);">Transfers</div>
+        <div class="value" style="font-size:16px;font-weight:700;">${selectedOut.size}</div>
+      </div>
+      <div class="cf-stat">
+        <div class="label" style="font-size:10px;text-transform:uppercase;color:var(--text-muted);">Hits</div>
+        <div class="value" style="font-size:16px;font-weight:700;color:${hits > 0 ? 'var(--red)' : 'var(--green)'};">${hits > 0 ? '-' + hitCost + ' pts' : 'Free'}</div>
+      </div>
+      <div class="cf-stat">
+        <div class="label" style="font-size:10px;text-transform:uppercase;color:var(--text-muted);">Bank After</div>
+        <div class="value" style="font-size:16px;font-weight:700;">${result.bank_remaining}m</div>
+      </div>
+    </div>
+    <button class="btn-confirm" onclick="confirmTransfer()" ${allSelected ? '' : 'disabled style="opacity:0.4;cursor:not-allowed;"'}>
+      Confirm transfer${selectedOut.size > 1 ? 's' : ''}
+    </button>
+  </div>`;
+
+  panel.innerHTML = html;
+}
+
+async function selectReplacement(slotIdx, optIdx) {
+  if (!simResult || confirmed) return;
+
+  const slot = simResult.replacements[slotIdx];
+  slot.selected = slot.options[optIdx];
+
+  // Re-render panel immediately to show selection
+  renderReplacementPanel(simResult);
+
+  // Re-simulate with chosen replacements to get updated lineup
+  try {
+    const resp = await fetch('/api/simulate-transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team_id: TEAM_ID,
+        sell_ids: [...selectedOut],
+        force_buys: simResult.replacements.map(r => r.selected ? r.selected.id : null).filter(Boolean),
+        horizon: horizon,
+      }),
+    });
+
+    const newResult = await resp.json();
+    if (newResult.starters && newResult.starters.length) {
+      simResult.starters = newResult.starters;
+      simResult.bench = newResult.bench;
+      simResult.bank_remaining = newResult.bank_remaining;
+      renderPitch(newResult.starters, newResult.bench, true);
+      renderReplacementPanel(simResult);
+    }
+  } catch (err) {
+    // Keep existing view
+  }
+}
+
+function confirmTransfer() {
+  if (!simResult) return;
+
+  // Save confirmed transfers
+  simResult.replacements.forEach(slot => {
+    if (slot.selected) {
+      confirmedTransfers.push({ out: slot.selling, in: slot.selected });
+      totalTransfersMade++;
+    }
+  });
+
+  // Update working squad to the simulated one
+  if (simResult.starters && simResult.starters.length) {
+    currentStarters = [...simResult.starters];
+    currentBench = [...simResult.bench];
+  }
+  currentBank = simResult.bank_remaining;
+
+  // Clear selection state but keep confirmed transfers
+  selectedOut.clear();
+  simResult = null;
+  confirmed = false;
+
+  // Show all confirmed transfers in the panel
+  renderConfirmedPanel();
+
+  // Render the updated squad (clickable for more transfers)
+  renderPitch(currentStarters, currentBench, false);
+  updateTransferBar();
+}
+
+function renderConfirmedPanel() {
+  const panel = document.getElementById('replacement-panel');
+  const { hits, hitCost } = { hits: Math.max(0, totalTransfersMade - ORIGINAL_DATA.free_transfers), hitCost: Math.max(0, totalTransfersMade - ORIGINAL_DATA.free_transfers) * 4 };
+
+  let html = `<div class="confirmed-panel">
+    <div class="confirmed-header">
+      <h3>${confirmedTransfers.length} Transfer${confirmedTransfers.length > 1 ? 's' : ''} Confirmed</h3>
+      <span style="font-size:12px;color:var(--text-muted);">Make these moves on fpl.premierleague.com</span>
+    </div>`;
+
+  confirmedTransfers.forEach((t, i) => {
+    html += `<div class="confirmed-transfer">
+      <div class="confirmed-player out">
+        <div>
+          <div class="cp-name">${t.out.name}</div>
+          <div class="cp-meta">${t.out.position} - ${t.out.team} - ${t.out.cost}m</div>
+        </div>
+      </div>
+      <div class="confirmed-arrow">&rarr;</div>
+      <div class="confirmed-player in">
+        <div>
+          <div class="cp-name">${t.in.name}</div>
+          <div class="cp-meta">${t.in.position} - ${t.in.team} - ${t.in.cost}m - ${t.in.xpts} xPts</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="confirmed-footer">
+      <div class="cf-stats">
+        <div class="cf-stat">
+          <div class="label">Transfers</div>
+          <div class="value">${totalTransfersMade}</div>
+        </div>
+        <div class="cf-stat">
+          <div class="label">Cost</div>
+          <div class="value" style="color:${hits > 0 ? 'var(--red)' : 'var(--green)'}">${hits > 0 ? '-' + hitCost + ' pts' : 'Free'}</div>
+        </div>
+        <div class="cf-stat">
+          <div class="label">Bank</div>
+          <div class="value">${currentBank}m</div>
+        </div>
+      </div>
+      <button class="btn-edit" onclick="resetTransfer()">Start over</button>
+    </div>
+  </div>`;
+
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+}
+
+function editTransfer() {
+  confirmed = false;
+  renderReplacementPanel(simResult);
+  if (simResult.starters && simResult.starters.length) {
+    renderPitch(simResult.starters, simResult.bench, true);
+  }
+  updateTransferBar();
+}
+
+let activePos = 'MID';
+
+function renderTopPlayers() {
+  const container = document.getElementById('top-players-container');
+  const positions = ['MID', 'FWD', 'DEF', 'GKP'];
+  let html = '';
+
+  positions.forEach(pos => {
+    const players = ORIGINAL_DATA.top_players[pos] || [];
+    // Sort by current horizon
+    const sorted = [...players].sort((a, b) => {
+      const aVal = horizon === 1 ? a.xpts : a.xpts_5gw;
+      const bVal = horizon === 1 ? b.xpts : b.xpts_5gw;
+      return bVal - aVal;
+    });
+
+    const display = pos === activePos ? '' : 'display:none;';
+    html += `<div class="position-table" id="table-${pos}" style="${display}">
+      <table class="players-table">
+        <thead><tr>
+          <th>Player</th><th>Team</th><th>Cost</th>
+          <th>${horizon === 1 ? 'xPts' : 'xPts (5GW)'}</th>
+          <th>This GW</th><th>Form</th><th>xGI/90</th>
+        </tr></thead><tbody>`;
+
+    sorted.forEach(p => {
+      const mainXpts = horizon === 1 ? p.xpts : p.xpts_5gw;
+      html += `<tr>
+        <td><span style="font-weight:600;">${p.name}</span> ${p.penalty ? '<span class="penalty-flag">PEN</span>' : ''}</td>
+        <td style="color:var(--text-muted);">${p.team}</td>
+        <td>${p.cost}m</td>
+        <td class="xpts">${mainXpts}</td>
+        <td style="color:var(--text-muted);">${p.xpts}</td>
+        <td>${p.form}</td>
+        <td>${p.xgi90}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+  });
+
+  container.innerHTML = html;
+}
+
+// Initial render
+renderPitch(currentStarters, currentBench, false);
+updateTransferBar();
+renderTopPlayers();
+renderTransferRecs();
+</script>
+
+</body>
+</html>
