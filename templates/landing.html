@@ -174,7 +174,7 @@
       <button type="submit" id="go-btn">Analyse</button>
     </div>
   </form>
-  <div class="error" id="error-msg"></div>
+  <div class="error" id="error-msg" {% if error %}style="display:block;"{% endif %}>{{ error or '' }}</div>
 
   <div class="help">
     <h3>How to find your Team ID</h3>

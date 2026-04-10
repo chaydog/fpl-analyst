@@ -283,8 +283,26 @@ def dashboard(team_id):
     try:
         data = get_data(team_id)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return render_template("landing.html", error=str(e)), 400
     return render_template("index.html", data=data, data_json=json.dumps(data, cls=NumpyEncoder), team_id=team_id)
+
+
+@app.route("/health")
+def health():
+    """Debug endpoint to check if data/models are loaded."""
+    import os
+    data_exists = os.path.exists("data/processed/history.parquet")
+    models_exist = os.path.exists("models/models.pkl")
+    return jsonify({
+        "data_exists": data_exists,
+        "models_exist": models_exist,
+        "cache_loaded": _cache["fb"] is not None,
+        "cwd": os.getcwd(),
+        "data_files": os.listdir("data/processed") if os.path.exists("data/processed") else [],
+        "model_files": os.listdir("models") if os.path.exists("models") else [],
+    })
 
 
 @app.route("/api/data/<int:team_id>")
