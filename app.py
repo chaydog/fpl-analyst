@@ -41,14 +41,37 @@ CACHE_TTL = 3600  # refresh shared data every hour
 
 
 def _load_shared():
-    """Load shared data (players, model, predictions) - cached across requests."""
+    """Load shared data (players, model, predictions) - cached across requests.
+
+    If data/models don't exist on disk (e.g. fresh Render deploy),
+    pulls data from FPL API and trains models first.
+    """
     from fpl.api import FPLClient
     from fpl.features import FeatureBuilder
     from fpl.model import PointsPredictor
+    from pathlib import Path
 
     now = time.time()
     if _cache["fb"] and (now - _cache["loaded_at"]) < CACHE_TTL:
         return
+
+    # Pull data if not present
+    if not Path("data/processed/history.parquet").exists():
+        print("Data not found - pulling from FPL API...")
+        from fpl.ingest import DataIngestor
+        ingestor = DataIngestor()
+        ingestor.pull_all(verbose=True)
+
+    # Train models if not present
+    if not Path("models/models.pkl").exists():
+        print("Models not found - training...")
+        fb_tmp = FeatureBuilder()
+        fb_tmp.load_data()
+        features = fb_tmp.build_training_features()
+        feature_cols = fb_tmp.get_feature_columns()
+        predictor_tmp = PointsPredictor()
+        predictor_tmp.train(features, feature_cols)
+        print("Training complete.")
 
     fb = FeatureBuilder()
     fb.load_data()
