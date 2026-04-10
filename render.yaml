@@ -2,7 +2,7 @@ services:
   - type: web
     name: fpl-analyst
     runtime: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: rm -rf data/processed models && git checkout -- data/processed models && pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
     plan: free
     envVars:
